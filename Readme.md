@@ -11,6 +11,8 @@ Implemented based on [Tianshou](https://github.com/thu-ml/tianshou).
 - [ ] [I2C](http://arxiv.org/abs/2006.06455)
 - [ ] [Intention Sharing](https://openreview.net/forum?id=qpsl2dR9twy)
 
+Recommend [A Survey of Multi-Agent Reinforcement Learning with Communication](http://arxiv.org/abs/2203.08975) for a detailed taxonomy.
+
 ## Training Schemes
 | Types | Sub-types |
 | -- | -- |
