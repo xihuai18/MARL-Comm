@@ -85,7 +85,7 @@ Act as a vectorized env with `agent_num` envs.
 
 AysncCollector with `self._ready_env_ids` initialized as `[1 0 ... ]` and `self.data` initialized to be length `env_num` seems suitable, accompanied with `env_id` in returned info.
 
-## MAPolicyManager
+### MAPolicyManager
 
 Maintain the centralized part inside the class.
 
