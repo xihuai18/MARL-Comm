@@ -16,6 +16,8 @@ Implemented based on [Tianshou](https://github.com/thu-ml/tianshou) and [Petting
 - [ ] [I2C](http://arxiv.org/abs/2006.06455)
 - [ ] [Intention Sharing](https://openreview.net/forum?id=qpsl2dR9twy)
 
+### Simple Taxonomy
+
 ```mermaid
 flowchart TD
     subgraph CTDE [CTDE]
@@ -32,12 +34,13 @@ flowchart TD
     subgraph FD [Fully Decentralized]
     end
 ```
+We recommend [A Survey of Multi-Agent Reinforcement Learning with Communication](http://arxiv.org/abs/2203.08975) for a detailed taxonomy.
+### DataFlow in MARL-Comm
 
-DataFlow in MARL-Comm
+![CL or DL](docs/images/CL_or_DL.png)
 
+![CTDE](docs/images/CTDE.png)
 
-
-Recommend [A Survey of Multi-Agent Reinforcement Learning with Communication](http://arxiv.org/abs/2203.08975) for a detailed taxonomy.
 
 ## Training Schemes
 | Types               | Sub-types                             |
@@ -54,6 +57,7 @@ Recommend [A Survey of Multi-Agent Reinforcement Learning with Communication](ht
 
 ![Tianshou API Overview](docs/images/API%20overview.svg)
 
+The figure refers to https://colab.research.google.com/drive/1MhzYXtUEfnRrlAVSB3SR83r0HA5wds2i?usp=sharing.
 
 ### MARL Design Overview
 ```mermaid
