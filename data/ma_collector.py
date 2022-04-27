@@ -3,7 +3,8 @@ from typing import Any, Union
 import gym
 import numpy as np
 from tianshou.data import AsyncCollector
-from tianshou.env import BaseVectorEnv
+from tianshou.env import BaseVectorEnv, DummyVectorEnv
+from marl_comm.env import get_MA_VectorEnv
 
 
 class MultiAgentCollector(AsyncCollector):
@@ -15,15 +16,18 @@ class MultiAgentCollector(AsyncCollector):
         if hasattr(env, "num_agents"):
             agents = env.agents
         else:
-            agents = env.get_env_attr("agents")[0]
+            agents = env.get_env_attr("agents", [0])[0]
         if hasattr(env, "agent_idx"):
             agent_idx = env.agent_idx
         else:
-            agent_idx = env.get_env_attr("agents_idx")[0]
-            
+            agent_idx = env.get_env_attr("agents_idx", [0])[0]
+
         self.agents = agents
         self.agent_idx = agent_idx
         self.agent_num = len(agent_idx)
+
+        if not isinstance(env, BaseVectorEnv):
+            env = get_MA_VectorEnv(DummyVectorEnv, [lambda: env])
 
         super().__init__(env=env, **kwargs)
 
@@ -40,13 +44,13 @@ class MultiAgentCollector(AsyncCollector):
         ]
         global_obs = []
         for agent_i in range(0, self.agent_num):
-            for _ in range(len(self.env)):
+            for _ in range(self.env.env_num):  # self.env.env_num is the num of MAEnvs
                 item = {
                     "agent_id": self.agents[agent_i],
-                    "obs": np.empty_like(obs[0]["obs"]),
+                    "obs": np.empty_like(local_obs[0]["obs"]),
                 }
-                if "mask" in obs[0]:
-                    item["mask"] = obs[0]["mask"]
+                if "mask" in local_obs[0]:
+                    item["mask"] = local_obs[0]["mask"]
                 global_obs.append(item)
 
         for local_env_i, obs in enumerate(local_obs):
