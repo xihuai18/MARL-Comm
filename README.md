@@ -7,9 +7,17 @@ Implemented based on [Tianshou](https://github.com/thu-ml/tianshou) and [Petting
 #TODO: jupyter notebook
 
 ## Algs
-- [ ] DDPG & SAC
-- [ ] MADDPG & MASAC
-- [ ] IQL & QMIX & QMIX-Attention
+
+Comm-free baselines
+- [ ] DDPG 
+- [ ] MADDPG
+- [ ] SAC 
+- [ ] MASAC
+- [ ] IQL
+- [ ] QMIX 
+- [ ] QMIX-Attention
+
+Comm baselines
 - [ ] [DIAL](https://arxiv.org/abs/1605.06676)
 - [ ] [CommNet](https://arxiv.org/abs/1605.07736)
 - [ ] [TarMAC](https://arxiv.org/abs/1810.11187)
@@ -34,13 +42,13 @@ flowchart TD
     subgraph FD [Fully Decentralized]
     end
 ```
-We recommend [A Survey of Multi-Agent Reinforcement Learning with Communication](http://arxiv.org/abs/2203.08975) for a detailed taxonomy.
 ### DataFlow in MARL-Comm
 
 ![CL or DL](docs/images/CL_or_DL.png)
 
 ![CTDE](docs/images/CTDE.png)
 
+We recommend [A Survey of Multi-Agent Reinforcement Learning with Communication](http://arxiv.org/abs/2203.08975) for a detailed taxonomy.
 
 ## Training Schemes
 | Types               | Sub-types                             |
