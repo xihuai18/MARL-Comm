@@ -2,10 +2,14 @@
 
 Implemented based on [Tianshou](https://github.com/thu-ml/tianshou) and [Pettingzoo](https://github.com/Farama-Foundation/PettingZoo).
 
+## Tutorials
+
+#TODO: jupyter notebook
+
 ## Algs
 - [ ] DDPG & SAC
 - [ ] MADDPG & MASAC
-- [ ] QMIX
+- [ ] IQL & QMIX & QMIX-Attention
 - [ ] [DIAL](https://arxiv.org/abs/1605.06676)
 - [ ] [CommNet](https://arxiv.org/abs/1605.07736)
 - [ ] [TarMAC](https://arxiv.org/abs/1810.11187)
@@ -42,6 +46,12 @@ Recommend [A Survey of Multi-Agent Reinforcement Learning with Communication](ht
 
 ## Logic of Tianshou in MARL
 
+### Tianshou API Overview
+
+![Tianshou API Overview](docs/images/API%20overview.svg)
+
+
+### MARL Design Overview
 ```mermaid
 flowchart
     subgraph mapolicy [MA-policy]
