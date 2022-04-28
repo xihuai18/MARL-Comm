@@ -9,10 +9,12 @@ Implemented based on [Tianshou](https://github.com/thu-ml/tianshou) and [Petting
 ## Algs
 
 Comm-free baselines
-- [ ] DDPG 
+- [ ] IDDPG 
 - [ ] MADDPG
-- [ ] SAC 
+- [ ] ISAC 
 - [ ] MASAC
+- [ ] PPO
+- [ ] MAPPO
 - [ ] IQL
 - [ ] QMIX 
 - [ ] QMIX-Attention

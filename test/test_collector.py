@@ -10,6 +10,7 @@ from pprint import pprint
 n_pistons = 5
 n_envs = 3
 
+
 def get_env():
     return MAEnvWrapper(pistonball_v6.env(continuous=False, n_pistons=n_pistons))
 
@@ -43,7 +44,7 @@ def test_single_env():
         exploration_noise=True,
     )
 
-    stats = collector.collect(n_step=1000)
+    stats = collector.collect(n_step=100)
 
     env.close()
 
@@ -63,11 +64,12 @@ def test_vector_env():
         exploration_noise=True,
     )
 
-    stats = collector.collect(n_step=1000 * n_envs)
+    stats = collector.collect(n_step=100 * n_envs)
 
     venv.close()
 
     return collector, stats
+
 
 if __name__ == "__main__":
     print("single env")

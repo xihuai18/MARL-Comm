@@ -6,7 +6,8 @@ import gym
 import numpy as np
 import pettingzoo.butterfly.pistonball_v6 as pistonball_v6
 import torch
-from tianshou.data import Collector, VectorReplayBuffer
+from tianshou.data import AsyncCollector as Collector
+from tianshou.data import VectorReplayBuffer
 from tianshou.env import SubprocVectorEnv, DummyVectorEnv
 from tianshou.env.pettingzoo_env import PettingZooEnv
 from tianshou.policy import BasePolicy, DQNPolicy, MultiAgentPolicyManager
@@ -68,7 +69,7 @@ def get_agents(
     agents: Optional[List[BasePolicy]] = None,
     optims: Optional[List[torch.optim.Optimizer]] = None,
 ) -> Tuple[BasePolicy, List[torch.optim.Optimizer], List]:
-    
+
     env = get_env()
     observation_space = (
         env.observation_space["observation"]
@@ -111,7 +112,9 @@ def train_agent(
     agents: Optional[List[BasePolicy]] = None,
     optims: Optional[List[torch.optim.Optimizer]] = None,
 ) -> Tuple[dict, BasePolicy]:
-    train_envs = SubprocVectorEnv([get_env for _ in range(args.training_num)])
+    train_envs = SubprocVectorEnv(
+        [get_env for _ in range(args.training_num)], wait_num=args.training_num - 1
+    )
     test_envs = SubprocVectorEnv([get_env for _ in range(args.test_num)])
     # seed
     np.random.seed(args.seed)
@@ -187,10 +190,9 @@ def watch(
     print(f"Final reward: {rews[:, 0].mean()}, length: {lens.mean()}")
 
 
-
-
 def test_piston_ball(args=get_args()):
     import pprint
+
     if args.watch:
         watch(args)
         return

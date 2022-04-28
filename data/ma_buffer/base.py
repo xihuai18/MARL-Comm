@@ -13,22 +13,26 @@ def get_extend_replaybuffer_cls(
     :param Tuple[str] extend_keys: the keys to be extended
     :return Type[ReplayBuffer]: the extended replaybuffer class
     """
-    attrs_dict = {"_reserved_keys": cls._reserved_keys + extend_keys}
+    attrs_dict = {"_reserved_keys": extend_keys}
     return type(name, (cls,), attrs_dict)
 
 
 class MAReplayBuffer(ReplayBufferManager):
-    def __init__(self, size: int, agent_num:int, global_infos: List[str] = None, **kwargs: Any) -> None:
+    def __init__(
+        self, size: int, agent_num: int, global_infos: List[str] = None, **kwargs: Any
+    ) -> None:
         assert agent_num > 0
         buffer_list = [ReplayBuffer(size, **kwargs) for _ in range(agent_num)]
 
         if global_infos is not None:
             replaybuffer_name = "ReplayBuffer" + "_".join(global_infos)
-            replaybuffer_cls = get_extend_replaybuffer_cls(replaybuffer_name, ReplayBuffer, global_infos)
+            replaybuffer_cls = get_extend_replaybuffer_cls(
+                replaybuffer_name, ReplayBuffer, global_infos
+            )
             self.global_buffer = replaybuffer_cls(size, **kwargs)
         else:
             self.global_buffer = None
-        
+
         super().__init__(buffer_list)
 
     def sample_indices(self, batch_size: int) -> np.ndarray:

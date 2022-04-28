@@ -14,23 +14,24 @@ from torch import nn
 
 class MAPolicyManager(BasePolicy):
     """Base Multi-agent Policy Manager in marl_comm, including the following schemes:
-        ```mermaid
-        flowchart TD
-            subgraph CTDE [CTDE]
-                subgraph p [Parameter]
-                    IP([Individual Parameter])
-                    PS([Parameter Sharing])
-                    IPGI([Individual Parameter with Global Information])
-                end
-                subgraph c [Critic]
-                    IC([Individual Critic])
-                    JC([Joint Critic])
-                end
+    ```mermaid
+    flowchart TD
+        subgraph CTDE [CTDE]
+            subgraph p [Parameter]
+                IP([Individual Parameter])
+                PS([Parameter Sharing])
+                IPGI([Individual Parameter with Global Information])
             end
-            subgraph FD [Fully Decentralized]
+            subgraph c [Critic]
+                IC([Individual Critic])
+                JC([Joint Critic])
             end
-        ```
+        end
+        subgraph FD [Fully Decentralized]
+        end
+    ```
     """
+
     def __init__(
         self,
         policies: List[BasePolicy],
@@ -39,7 +40,7 @@ class MAPolicyManager(BasePolicy):
         parameter_mode: str = "Indvd",
         critic_mode: str = "IC",
         comm: bool = False,
-        **kwargs: Any
+        **kwargs: Any,
     ) -> None:
         """
         :param List[BasePolicy] policies: the list of policies
@@ -48,9 +49,13 @@ class MAPolicyManager(BasePolicy):
         :param str parameter_mode: parameter mode in CTDE, choices include {"IP", "PS", "IPGI"}, defaults to "Indvd"
         :param str critic_mode: choices include {"IC", "JC"}, defaults to "IC"
         :param bool comm: whether to use communication
-        """    
+        """
         assert train_scheme in ["CTDE", "FD"], "train_scheme must be in {'CTDE', 'FD'}"
-        assert parameter_mode in ["IP", "PS", "IPGI"], "parameter_mode must be in {'IP', 'PS', 'IPGI'}"
+        assert parameter_mode in [
+            "IP",
+            "PS",
+            "IPGI",
+        ], "parameter_mode must be in {'IP', 'PS', 'IPGI'}"
         assert critic_mode in ["IC", "JC"], "critic_mode must be in {'IC', 'JC'}"
         super().__init__(action_space=env.action_space, **kwargs)
         self.train_scheme = train_scheme
@@ -59,15 +64,19 @@ class MAPolicyManager(BasePolicy):
         self.comm = comm
 
         self.agent_idx = env.agent_idx
-        
+
         if not self.parameter_mode == "PS":
-            assert len(policies) == len(env.agents), "One policy must be assigned for each agent."
+            assert len(policies) == len(
+                env.agents
+            ), "One policy must be assigned for each agent."
 
             for i, policy in enumerate(policies):
                 policy.set_agent_id(env.agents[i])
         else:
             # shallow copy for each agent
-            assert len(policies) == 1, "Only one policy can be assigned for parameter sharing."
+            assert (
+                len(policies) == 1
+            ), "Only one policy can be assigned for parameter sharing."
             # The agent id is 0 for the parameter sharing policy
             policies = policies * len(env.agents)
 
@@ -78,7 +87,15 @@ class MAPolicyManager(BasePolicy):
         policy.set_agent_id(agent_id)
         self.policies[agent_id] = policy
 
-    def _process_critic_input(self, batch: Batch, )
+    def _process_critic_input(
+        self, batch: Batch, buffer: ReplayBuffer, indice: np.ndarray
+    ) -> Batch:
+        pass
+
+    def _process_actor_input(
+        self, batch: Batch, buffer: ReplayBuffer, indice: np.ndarray
+    ) -> Batch:
+        pass
 
     def process_fn(
         self, batch: Batch, buffer: ReplayBuffer, indice: np.ndarray
@@ -103,19 +120,21 @@ class MAPolicyManager(BasePolicy):
             tmp_batch, tmp_indice = batch[agent_index], indice[agent_index]
             if has_rew:
                 tmp_batch.rew = tmp_batch.rew[:, self.agent_idx[agent]]
+                # A buffer with only the selected agent is needed for preprocessing
                 buffer._meta.rew = save_rew[:, self.agent_idx[agent]]
             if not hasattr(tmp_batch.obs, "mask"):
-                if hasattr(tmp_batch.obs, 'obs'):
+                if hasattr(tmp_batch.obs, "obs"):
                     tmp_batch.obs = tmp_batch.obs.obs
-                if hasattr(tmp_batch.obs_next, 'obs'):
+                if hasattr(tmp_batch.obs_next, "obs"):
                     tmp_batch.obs_next = tmp_batch.obs_next.obs
             results[agent] = policy.process_fn(tmp_batch, buffer, tmp_indice)
         if has_rew:  # restore from save_rew
             buffer._meta.rew = save_rew
         return Batch(results)
-        
-    def exploration_noise(self, act: Union[np.ndarray, Batch],
-                          batch: Batch) -> Union[np.ndarray, Batch]:
+
+    def exploration_noise(
+        self, act: Union[np.ndarray, Batch], batch: Batch
+    ) -> Union[np.ndarray, Batch]:
         """Add exploration noise from sub-policy onto act."""
         for agent_id, policy in self.policies.items():
             agent_index = np.nonzero(batch.obs.agent_id == agent_id)[0]
@@ -125,7 +144,7 @@ class MAPolicyManager(BasePolicy):
                 act[agent_index], batch[agent_index]
             )
         return act
-    
+
     def forward(  # type: ignore
         self,
         batch: Batch,
@@ -156,8 +175,9 @@ class MAPolicyManager(BasePolicy):
             }
         """
 
-    def learn(self, batch: Batch,
-              **kwargs: Any) -> Dict[str, Union[float, List[float]]]:
+    def learn(
+        self, batch: Batch, **kwargs: Any
+    ) -> Dict[str, Union[float, List[float]]]:
         """Dispatch the data to all policies for learning.
 
         :return: a dict with the following contents:
