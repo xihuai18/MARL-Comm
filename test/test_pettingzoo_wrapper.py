@@ -1,5 +1,5 @@
 import pettingzoo.butterfly.pistonball_v6 as pistonball_v6
-from tianshou.env import SubprocVectorEnv, BaseVectorEnv
+from tianshou.env import BaseVectorEnv, SubprocVectorEnv
 
 from marl_comm.env import MAEnvWrapper, get_MA_VectorEnv_cls
 

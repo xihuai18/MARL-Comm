@@ -6,17 +6,18 @@ import gym
 import numpy as np
 import pettingzoo.butterfly.pistonball_v6 as pistonball_v6
 import torch
-from marl_comm.data import MACollector, MAReplayBuffer
-from marl_comm.ma_policy import MAPolicyManager
-from marl_comm.env import MAEnvWrapper, get_MA_VectorEnv
+from tianshou.data import VectorReplayBuffer
 from tianshou.env import DummyVectorEnv, SubprocVectorEnv
 from tianshou.env.pettingzoo_env import PettingZooEnv
 from tianshou.policy import BasePolicy, DQNPolicy
 from tianshou.trainer import offpolicy_trainer
 from tianshou.utils import TensorboardLogger
 from tianshou.utils.net.common import Net
-from tianshou.data import VectorReplayBuffer
 from torch.utils.tensorboard import SummaryWriter
+
+from marl_comm.data import MACollector, MAReplayBuffer
+from marl_comm.env import MAEnvWrapper, get_MA_VectorEnv
+from marl_comm.ma_policy import MAPolicyManager
 
 
 def get_parser() -> argparse.ArgumentParser:
@@ -26,12 +27,14 @@ def get_parser() -> argparse.ArgumentParser:
     parser.add_argument("--eps-train", type=float, default=0.1)
     parser.add_argument("--buffer-size", type=int, default=2000)
     parser.add_argument("--lr", type=float, default=1e-3)
-    parser.add_argument(
-        "--gamma", type=float, default=0.9, help="a smaller gamma favors earlier win"
-    )
-    parser.add_argument(
-        "--n-pistons", type=int, default=10, help="Number of pistons(agents) in the env"
-    )
+    parser.add_argument("--gamma",
+                        type=float,
+                        default=0.9,
+                        help="a smaller gamma favors earlier win")
+    parser.add_argument("--n-pistons",
+                        type=int,
+                        default=10,
+                        help="Number of pistons(agents) in the env")
     parser.add_argument("--n-step", type=int, default=100)
     parser.add_argument("--target-update-freq", type=int, default=320)
     parser.add_argument("--epoch", type=int, default=3)
@@ -39,7 +42,10 @@ def get_parser() -> argparse.ArgumentParser:
     parser.add_argument("--step-per-collect", type=int, default=10)
     parser.add_argument("--update-per-step", type=float, default=0.1)
     parser.add_argument("--batch-size", type=int, default=100)
-    parser.add_argument("--hidden-sizes", type=int, nargs="*", default=[64, 64])
+    parser.add_argument("--hidden-sizes",
+                        type=int,
+                        nargs="*",
+                        default=[64, 64])
     parser.add_argument("--training-num", type=int, default=5)
     parser.add_argument("--test-num", type=int, default=1)
     parser.add_argument("--logdir", type=str, default="log")
@@ -49,11 +55,12 @@ def get_parser() -> argparse.ArgumentParser:
         "--watch",
         default=False,
         action="store_true",
-        help="no training, " "watch the play of pre-trained models",
+        help="no training, "
+        "watch the play of pre-trained models",
     )
-    parser.add_argument(
-        "--device", type=str, default="cuda" if torch.cuda.is_available() else "cpu"
-    )
+    parser.add_argument("--device",
+                        type=str,
+                        default="cuda" if torch.cuda.is_available() else "cpu")
     return parser
 
 
@@ -63,7 +70,8 @@ def get_args() -> argparse.Namespace:
 
 
 def get_env(args: argparse.Namespace = get_args()):
-    return MAEnvWrapper(pistonball_v6.env(continuous=False, n_pistons=args.n_pistons))
+    return MAEnvWrapper(
+        pistonball_v6.env(continuous=False, n_pistons=args.n_pistons))
 
 
 def get_agents(
@@ -73,11 +81,8 @@ def get_agents(
 ) -> Tuple[BasePolicy, List[torch.optim.Optimizer], List]:
 
     env = get_env()
-    observation_space = (
-        env.observation_space["observation"]
-        if isinstance(env.observation_space, gym.spaces.Dict)
-        else env.observation_space
-    )
+    observation_space = (env.observation_space["observation"] if isinstance(
+        env.observation_space, gym.spaces.Dict) else env.observation_space)
     args.state_shape = observation_space.shape or observation_space.n
     args.action_shape = env.action_space.shape or env.action_space.n
 
@@ -109,9 +114,8 @@ def get_agents(
 
 def get_buffer(args: argparse.Namespace = get_args()):
     env = get_env()
-    return MAReplayBuffer(
-        args.buffer_size, env.agents, VectorReplayBuffer, args.training_num
-    )
+    return MAReplayBuffer(args.buffer_size, env.agents, VectorReplayBuffer,
+                          args.training_num)
 
 
 def train_agent(
@@ -119,12 +123,10 @@ def train_agent(
     agents: Optional[List[BasePolicy]] = None,
     optims: Optional[List[torch.optim.Optimizer]] = None,
 ) -> Tuple[dict, BasePolicy]:
-    train_envs = get_MA_VectorEnv(
-        SubprocVectorEnv, [get_env for _ in range(args.training_num)]
-    )
-    test_envs = get_MA_VectorEnv(
-        SubprocVectorEnv, [get_env for _ in range(args.test_num)]
-    )
+    train_envs = get_MA_VectorEnv(SubprocVectorEnv,
+                                  [get_env for _ in range(args.training_num)])
+    test_envs = get_MA_VectorEnv(SubprocVectorEnv,
+                                 [get_env for _ in range(args.test_num)])
     # seed
     np.random.seed(args.seed)
     torch.manual_seed(args.seed)
@@ -134,9 +136,10 @@ def train_agent(
     policy, optim, agents = get_agents(args, agents=agents, optims=optims)
 
     # collector
-    train_collector = MACollector(
-        policy, train_envs, get_buffer(args), exploration_noise=True
-    )
+    train_collector = MACollector(policy,
+                                  train_envs,
+                                  get_buffer(args),
+                                  exploration_noise=True)
     test_collector = MACollector(policy, test_envs)
     train_collector.collect(n_step=args.batch_size * args.training_num)
     # log
@@ -183,9 +186,8 @@ def train_agent(
     return result, policy
 
 
-def watch(
-    args: argparse.Namespace = get_args(), policy: Optional[BasePolicy] = None
-) -> None:
+def watch(args: argparse.Namespace = get_args(),
+          policy: Optional[BasePolicy] = None) -> None:
     env = get_MA_VectorEnv(DummyVectorEnv, [get_env])
     policy.eval()
     [agent.set_eps(args.eps_test) for agent in policy.policies.values()]
