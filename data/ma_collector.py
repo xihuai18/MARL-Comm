@@ -5,16 +5,22 @@ import gym
 import numpy as np
 import torch
 from marl_comm.env import get_MA_VectorEnv
-from tianshou.data import AsyncCollector, Batch, to_numpy
+from tianshou.data import Collector, Batch, to_numpy
 from tianshou.data.batch import _alloc_by_keys_diff
 from tianshou.env import BaseVectorEnv, DummyVectorEnv
+from tianshou.policy import BasePolicy
+
+from marl_comm.data.ma_buffer import MAReplayBuffer
 
 
-class MultiAgentCollector(AsyncCollector):
+class MACollector(Collector):
     def __init__(
         self,
+        policy: BasePolicy,
         env: Union[gym.Env, BaseVectorEnv],
-        **kwargs: Any,
+        buffer: Optional[MAReplayBuffer] = None,
+        preprocess_fn: Optional[Callable[..., Batch]] = None,
+        exploration_noise: bool = False,
     ) -> None:
         if hasattr(env, "num_agents"):
             agents = env.agents
@@ -34,7 +40,7 @@ class MultiAgentCollector(AsyncCollector):
 
         self.maenv_num = env.env_num
 
-        super().__init__(env=env, **kwargs)
+        super().__init__(policy, env, buffer, preprocess_fn, exploration_noise)
 
     def reset_env(self) -> None:
         """Reset all of the environments.

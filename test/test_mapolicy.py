@@ -6,14 +6,16 @@ import gym
 import numpy as np
 import pettingzoo.butterfly.pistonball_v6 as pistonball_v6
 import torch
-from tianshou.data import Collector
-from tianshou.data import VectorReplayBuffer
-from tianshou.env import SubprocVectorEnv, DummyVectorEnv
+from marl_comm.data import MACollector, MAReplayBuffer
+from marl_comm.ma_policy import MAPolicyManager
+from marl_comm.env import MAEnvWrapper, get_MA_VectorEnv
+from tianshou.env import DummyVectorEnv, SubprocVectorEnv
 from tianshou.env.pettingzoo_env import PettingZooEnv
-from tianshou.policy import BasePolicy, DQNPolicy, MultiAgentPolicyManager
+from tianshou.policy import BasePolicy, DQNPolicy
 from tianshou.trainer import offpolicy_trainer
 from tianshou.utils import TensorboardLogger
 from tianshou.utils.net.common import Net
+from tianshou.data import VectorReplayBuffer
 from torch.utils.tensorboard import SummaryWriter
 
 
@@ -61,7 +63,7 @@ def get_args() -> argparse.Namespace:
 
 
 def get_env(args: argparse.Namespace = get_args()):
-    return PettingZooEnv(pistonball_v6.env(continuous=False, n_pistons=args.n_pistons))
+    return MAEnvWrapper(pistonball_v6.env(continuous=False, n_pistons=args.n_pistons))
 
 
 def get_agents(
@@ -78,8 +80,6 @@ def get_agents(
     )
     args.state_shape = observation_space.shape or observation_space.n
     args.action_shape = env.action_space.shape or env.action_space.n
-
-    # print(args.state_shape)
 
     if agents is None:
         agents = []
@@ -103,8 +103,15 @@ def get_agents(
             agents.append(agent)
             optims.append(optim)
 
-    policy = MultiAgentPolicyManager(agents, env)
+    policy = MAPolicyManager(agents, env, train_scheme="FD")
     return policy, optims, env.agents
+
+
+def get_buffer(args: argparse.Namespace = get_args()):
+    env = get_env()
+    return MAReplayBuffer(
+        args.buffer_size, env.agents, VectorReplayBuffer, args.training_num
+    )
 
 
 def train_agent(
@@ -112,9 +119,12 @@ def train_agent(
     agents: Optional[List[BasePolicy]] = None,
     optims: Optional[List[torch.optim.Optimizer]] = None,
 ) -> Tuple[dict, BasePolicy]:
-    train_envs = SubprocVectorEnv(
-        [get_env for _ in range(args.training_num)])
-    test_envs = SubprocVectorEnv([get_env for _ in range(args.test_num)])
+    train_envs = get_MA_VectorEnv(
+        SubprocVectorEnv, [get_env for _ in range(args.training_num)]
+    )
+    test_envs = get_MA_VectorEnv(
+        SubprocVectorEnv, [get_env for _ in range(args.test_num)]
+    )
     # seed
     np.random.seed(args.seed)
     torch.manual_seed(args.seed)
@@ -124,13 +134,10 @@ def train_agent(
     policy, optim, agents = get_agents(args, agents=agents, optims=optims)
 
     # collector
-    train_collector = Collector(
-        policy,
-        train_envs,
-        VectorReplayBuffer(args.buffer_size, len(train_envs)),
-        exploration_noise=True,
+    train_collector = MACollector(
+        policy, train_envs, get_buffer(args), exploration_noise=True
     )
-    test_collector = Collector(policy, test_envs, exploration_noise=True)
+    test_collector = MACollector(policy, test_envs)
     train_collector.collect(n_step=args.batch_size * args.training_num)
     # log
     log_path = os.path.join(args.logdir, "pistonball", "dqn")
@@ -151,7 +158,7 @@ def train_agent(
         [agent.set_eps(args.eps_test) for agent in policy.policies.values()]
 
     def reward_metric(rews):
-        return rews[:, 0]
+        return rews[0]
 
     # trainer
     result = offpolicy_trainer(
@@ -179,14 +186,14 @@ def train_agent(
 def watch(
     args: argparse.Namespace = get_args(), policy: Optional[BasePolicy] = None
 ) -> None:
-    env = DummyVectorEnv([get_env])
+    env = get_MA_VectorEnv(DummyVectorEnv, [get_env])
     policy.eval()
     [agent.set_eps(args.eps_test) for agent in policy.policies.values()]
-    collector = Collector(policy, env, exploration_noise=True)
+    collector = MACollector(policy, env)
     result = collector.collect(n_episode=1, render=args.render)
     # print(collector.data)
     rews, lens = result["rews"], result["lens"]
-    print(f"Final reward: {rews[:, 0].mean()}, length: {lens.mean()}")
+    print(f"Final reward: {rews[0].mean()}, length: {lens.mean()}")
 
 
 def test_piston_ball(args=get_args()):

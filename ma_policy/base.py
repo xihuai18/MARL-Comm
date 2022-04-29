@@ -1,15 +1,10 @@
-from abc import ABC, abstractmethod
-from typing import Any, Callable, Dict, List, Optional, Tuple, Union
+from typing import Any, Dict, List, Optional, Tuple, Union
 
-import gym
 import numpy as np
-import torch
-from gym.spaces import Box, Discrete, MultiBinary, MultiDiscrete
-from numba import njit
-from tianshou.data import Batch, ReplayBuffer, to_numpy, to_torch_as
+from marl_comm.data import MAReplayBuffer
+from tianshou.data import Batch, ReplayBuffer
 from tianshou.env.pettingzoo_env import PettingZooEnv
 from tianshou.policy import BasePolicy
-from torch import nn
 
 
 class MAPolicyManager(BasePolicy):
@@ -46,16 +41,16 @@ class MAPolicyManager(BasePolicy):
         :param List[BasePolicy] policies: the list of policies
         :param PettingZooEnv env: the environment
         :param str train_scheme: which training scheme to use, choices include {"CTDE", "FD"}, defaults to "CTDE"
-        :param str parameter_mode: parameter mode in CTDE, choices include {"IP", "PS", "IPGI"}, defaults to "Indvd"
+        :param str parameter_mode: parameter mode in CTDE, choices include {"Indvd", "shared", "IndvdGI"}, defaults to "Indvd"
         :param str critic_mode: choices include {"IC", "JC"}, defaults to "IC"
         :param bool comm: whether to use communication
         """
         assert train_scheme in ["CTDE", "FD"], "train_scheme must be in {'CTDE', 'FD'}"
         assert parameter_mode in [
-            "IP",
-            "PS",
-            "IPGI",
-        ], "parameter_mode must be in {'IP', 'PS', 'IPGI'}"
+            "Indvd",
+            "shared",
+            "IndvdGI",
+        ], 'parameter_mode must be in {"Indvd", "shared", "IndvdGI"}'
         assert critic_mode in ["IC", "JC"], "critic_mode must be in {'IC', 'JC'}"
         super().__init__(action_space=env.action_space, **kwargs)
         self.train_scheme = train_scheme
@@ -65,7 +60,11 @@ class MAPolicyManager(BasePolicy):
 
         self.agent_idx = env.agent_idx
 
-        if not self.parameter_mode == "PS":
+        assert self._check_policy(
+            policies, env
+        ), "policies are not consistent with the paramters"
+
+        if not self.parameter_mode == "shared":
             assert len(policies) == len(
                 env.agents
             ), "One policy must be assigned for each agent."
@@ -88,48 +87,49 @@ class MAPolicyManager(BasePolicy):
         self.policies[agent_id] = policy
 
     def _process_critic_input(
-        self, batch: Batch, buffer: ReplayBuffer, indice: np.ndarray
+        self,
+        batch: Batch,
+        state: Batch = None,
+        buffer: MAReplayBuffer = None,
+        indice: np.ndarray = None,
     ) -> Batch:
-        pass
+        """Process the input of the critic when updating policies, such as adding messages, or make joint obs"""
+        return batch
 
     def _process_actor_input(
-        self, batch: Batch, buffer: ReplayBuffer, indice: np.ndarray
+        self,
+        batch: Batch,
+        state: Batch = None,
+        buffer: ReplayBuffer = None,
+        indice: np.ndarray = None,
     ) -> Batch:
-        pass
+        """Process the input of the actor when updating policies, such as adding messages"""
+        return batch
+
+    def _check_policy(self, policies: List[BasePolicy], env: PettingZooEnv) -> bool:
+        """Check the input dim of the actor and critic, without considering the preprocessing net."""
+        # TODO: We can only access the last layer of the actor and critic, while it is hard to check whether the input dim of the preprocessing net is right.
+        return True
 
     def process_fn(
-        self, batch: Batch, buffer: ReplayBuffer, indice: np.ndarray
+        self, batch: Batch, buffer: MAReplayBuffer, indice: np.ndarray
     ) -> Batch:
-        """Dispatch batch data from obs.agent_id to every policy's process_fn.
-        Save original multi-dimensional rew in "save_rew", set rew to the
-        reward of each agent during their "process_fn", and restore the
-        original reward afterwards.
+        """The batch from buffer has the structure
+        {
+            "agent_1/item1": item 1 of agent_1's policy.learn output
+            "agent_1/item2": item 2 of agent_1's policy.learn output
+            "agent_2/xxx": xxx
+            ...
+            "agent_n/xxx": xxx
+        }
         """
+        batch = self._process_critic_input(batch, buffer=buffer, indice=indice)
+
         results = {}
-        # reward can be empty Batch (after initial reset) or nparray.
-        has_rew = isinstance(buffer.rew, np.ndarray)
-        if has_rew:  # save the original reward in save_rew
-            # Since we do not override buffer.__setattr__, here we use _meta to
-            # change buffer.rew, otherwise buffer.rew = Batch() has no effect.
-            save_rew, buffer._meta.rew = buffer.rew, Batch()
-        for agent, policy in self.policies.items():
-            agent_index = np.nonzero(batch.obs.agent_id == agent)[0]
-            if len(agent_index) == 0:
-                results[agent] = Batch()
-                continue
-            tmp_batch, tmp_indice = batch[agent_index], indice[agent_index]
-            if has_rew:
-                tmp_batch.rew = tmp_batch.rew[:, self.agent_idx[agent]]
-                # A buffer with only the selected agent is needed for preprocessing
-                buffer._meta.rew = save_rew[:, self.agent_idx[agent]]
-            if not hasattr(tmp_batch.obs, "mask"):
-                if hasattr(tmp_batch.obs, "obs"):
-                    tmp_batch.obs = tmp_batch.obs.obs
-                if hasattr(tmp_batch.obs_next, "obs"):
-                    tmp_batch.obs_next = tmp_batch.obs_next.obs
-            results[agent] = policy.process_fn(tmp_batch, buffer, tmp_indice)
-        if has_rew:  # restore from save_rew
-            buffer._meta.rew = save_rew
+        for agent_i, (agent, policy) in enumerate(self.policies.items()):
+            results[agent] = policy.process_fn(
+                batch[agent], buffer.get_agent_buffer(agent_i), indice
+            )
         return Batch(results)
 
     def exploration_noise(
@@ -167,13 +167,60 @@ class MAPolicyManager(BasePolicy):
                     "agent_2": xxx
                     ...
                     "agent_n": xxx}
-                "out": {
+                "policy": {
                     "agent_1": output of agent_1's policy for the input
                     "agent_2": xxx
                     ...
                     "agent_n": xxx}
             }
         """
+        results: List[
+            Tuple[bool, np.ndarray, Batch, Union[np.ndarray, Batch], Batch]
+        ] = []
+        for agent_id, policy in self.policies.items():
+            agent_index = np.nonzero(batch.obs.agent_id == agent_id)[0]
+            if len(agent_index) == 0:
+                # (has_data, agent_index, out, act, state)
+                results.append((False, np.array([-1]), Batch(), Batch(), Batch()))
+                continue
+            tmp_batch = batch[agent_index]
+            if not hasattr(tmp_batch.obs, "mask"):
+                if hasattr(tmp_batch.obs, "obs"):
+                    tmp_batch.obs = tmp_batch.obs.obs
+                if hasattr(tmp_batch.obs_next, "obs"):
+                    tmp_batch.obs_next = tmp_batch.obs_next.obs
+            out = policy(
+                batch=tmp_batch,
+                state=None if state is None else state[agent_id],
+                **kwargs,
+            )
+            act = out.act
+            each_state = (
+                out.state
+                if (hasattr(out, "state") and out.state is not None)
+                else Batch()
+            )
+            out.state = each_state
+            results.append((True, agent_index, out, act, each_state))
+        holder = Batch.cat(
+            [
+                {"act": act}
+                for (has_data, agent_index, out, act, each_state) in results
+                if has_data
+            ]
+        )
+        state_dict, out_dict = {}, {}
+        for (agent_id, _), (has_data, agent_index, out, act, state) in zip(
+            self.policies.items(), results
+        ):
+            if has_data:
+                holder.act[agent_index] = act
+            state_dict[agent_id] = state
+            out_dict[agent_id] = out
+        holder["policy"] = out_dict  # other infos could be added to holder["policy"]
+        if not any([b.is_empty() for b in state_dict.values()]):
+            holder["state"] = state_dict
+        return holder
 
     def learn(
         self, batch: Batch, **kwargs: Any
@@ -192,7 +239,7 @@ class MAPolicyManager(BasePolicy):
                 "agent_n/xxx": xxx
             }
         """
-        if not self.train_scheme == "CTDE":
+        if not (self.train_scheme == "CTDE" and self.parameter_mode == "shared"):
             results = {}
             for agent_id, policy in self.policies.items():
                 data = batch[agent_id]
@@ -200,6 +247,11 @@ class MAPolicyManager(BasePolicy):
                     out = policy.learn(batch=data, **kwargs)
                     for k, v in out.items():
                         results[agent_id + "/" + k] = v
-            return results
         else:
-            raise NotImplementedError
+            # CTDE with shared parameters
+            data = Batch.cat([data[agent_id] for agent_id in self.policies.keys()])
+            if not data.is_empty():
+                policy = self.policies[0]
+                results = policy.learn(batch=data, **kwargs)
+
+        return results

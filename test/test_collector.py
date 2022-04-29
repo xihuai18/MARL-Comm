@@ -1,10 +1,11 @@
 import gym
 import pettingzoo.butterfly.pistonball_v6 as pistonball_v6
-from marl_comm.data import MultiAgentCollector
+from marl_comm.data import MACollector
 from marl_comm.env import MAEnvWrapper, get_MA_VectorEnv_cls
 from tianshou.data import Collector, VectorReplayBuffer
 from tianshou.env import BaseVectorEnv, SubprocVectorEnv
-from tianshou.policy import MultiAgentPolicyManager, RandomPolicy
+from tianshou.policy import RandomPolicy
+from marl_comm.ma_policy import MAPolicyManager
 from pprint import pprint
 
 n_pistons = 5
@@ -28,7 +29,7 @@ def get_policy():
         RandomPolicy(observation_space, env.action_space) for _ in range(n_pistons)
     ]
 
-    policy = MultiAgentPolicyManager(agents, env)
+    policy = MAPolicyManager(agents, env)
 
     return policy
 
@@ -37,14 +38,14 @@ def test_single_env():
     policy = get_policy()
     env = get_env()
 
-    collector = MultiAgentCollector(
+    collector = MACollector(
         policy=policy,
         env=env,
         buffer=VectorReplayBuffer(2000, len(env)),
         exploration_noise=True,
     )
 
-    stats = collector.collect(n_step=100)
+    stats = collector.collect(n_step=1000)
 
     env.close()
 
@@ -57,14 +58,14 @@ def test_vector_env():
 
     policy = get_policy()
 
-    collector = MultiAgentCollector(
+    collector = MACollector(
         policy=policy,
         env=venv,
         buffer=VectorReplayBuffer(2000, len(venv)),
         exploration_noise=True,
     )
 
-    stats = collector.collect(n_step=100 * n_envs)
+    stats = collector.collect(n_step=1000 * n_envs)
 
     venv.close()
 
