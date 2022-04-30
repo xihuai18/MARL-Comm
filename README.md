@@ -13,10 +13,10 @@ Comm-free baselines
 - [ ] MADDPG
 - [ ] ISAC 
 - [ ] MASAC
-- [ ] PPO
-- [ ] MAPPO
-- [ ] IQL
-- [ ] QMIX 
+- [x] PPO
+- [x] MAPPO
+- [x] IQL
+- [x] QMIX 
 - [ ] QMIX-Attention
 
 Comm baselines
@@ -122,5 +122,9 @@ Maintain the centralized part inside the class.
 ### Install
 ```shell
 sudo apt install swig -y
-pip install tianshou 'pettingzoo[all]'
+pip install 'pettingzoo[all]'
+# Install my version of tianshou
+git clone https://github.com/Leo-xh/tianshou.git
+cd tianshou
+pip install -e .
 ```
