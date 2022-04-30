@@ -10,7 +10,7 @@ from marl_comm.data import MACollector
 from marl_comm.env import MAEnvWrapper, get_MA_VectorEnv_cls
 from marl_comm.ma_policy import MAPolicyManager
 
-n_pistons = 5
+n_pistons = 10
 n_envs = 3
 
 
@@ -46,7 +46,7 @@ def test_single_env():
         exploration_noise=True,
     )
 
-    stats = collector.collect(n_step=1000)
+    stats = collector.collect(n_step=10)
 
     env.close()
 
@@ -66,7 +66,7 @@ def test_vector_env():
         exploration_noise=True,
     )
 
-    stats = collector.collect(n_step=1000 * n_envs)
+    stats = collector.collect(n_step=10 * n_envs)
 
     venv.close()
 

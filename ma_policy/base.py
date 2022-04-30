@@ -1,7 +1,8 @@
 from typing import Any, Dict, List, Optional, Tuple, Union
 
+import torch.nn as nn
 import numpy as np
-from tianshou.data import Batch, ReplayBuffer
+from tianshou.data import Batch
 from tianshou.env.pettingzoo_env import PettingZooEnv
 from tianshou.policy import BasePolicy
 
@@ -62,6 +63,8 @@ class MAPolicyManager(BasePolicy):
         self.comm = comm
 
         self.agent_idx = env.agent_idx
+        self.agents = env.agents
+        self.agent_num = len(self.agents)
 
         assert self._check_policy(
             policies, env), "policies are not consistent with the paramters"
@@ -80,6 +83,7 @@ class MAPolicyManager(BasePolicy):
             policies = policies * len(env.agents)
 
         self.policies = dict(zip(env.agents, policies))
+        self._policies = nn.ModuleList(policies)
 
     def replace_policy(self, policy: BasePolicy, agent_id: int) -> None:
         """Replace the "agent_id"th policy in this manager."""
@@ -100,7 +104,7 @@ class MAPolicyManager(BasePolicy):
         self,
         batch: Batch,
         state: Batch = None,
-        buffer: ReplayBuffer = None,
+        buffer: MAReplayBuffer = None,
         indice: np.ndarray = None,
     ) -> Batch:
         """Process the input of the actor when updating policies, such as adding messages"""
