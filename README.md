@@ -4,8 +4,12 @@ Implemented based on [Tianshou](https://github.com/thu-ml/tianshou) and [Petting
 
 ## Tutorials
 
-#TODO: jupyter notebook
+### Example Scripts
 
+On PistonBall environment
+
+- test/test_mappo.py
+- test/test_qmix.py
 ## Algs
 
 Comm-free baselines
