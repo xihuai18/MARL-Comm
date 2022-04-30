@@ -2,11 +2,10 @@ from typing import Any, Dict, List, Optional, Type
 
 import numpy as np
 import torch
-from torch import nn
-
 from tianshou.data import Batch, ReplayBuffer, to_torch_as
 from tianshou.policy import PPOPolicy as BasePPO
 from tianshou.utils.net.common import ActorCritic
+from torch import nn
 
 
 class PPOPolicy(BasePPO):

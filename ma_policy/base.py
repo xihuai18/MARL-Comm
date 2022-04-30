@@ -133,7 +133,7 @@ class MAPolicyManager(BasePolicy):
         for agent_i, (agent, policy) in enumerate(self.policies.items()):
             results[agent] = policy.process_fn(
                 batch[agent], buffer.get_agent_buffer(agent_i), indice)
-                
+
         return Batch(results)
 
     def exploration_noise(self, act: Union[np.ndarray, Batch],

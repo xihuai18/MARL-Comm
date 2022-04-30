@@ -6,9 +6,6 @@ import gym
 import numpy as np
 import pettingzoo.butterfly.pistonball_v6 as pistonball_v6
 import torch
-from marl_comm.data import MACollector, MAReplayBuffer
-from marl_comm.env import MAEnvWrapper, get_MA_VectorEnv
-from marl_comm.ma_policy import MAPPOPolicy, PPOPolicy
 from tianshou.data import VectorReplayBuffer
 from tianshou.env import DummyVectorEnv, SubprocVectorEnv
 from tianshou.policy import BasePolicy
@@ -17,6 +14,10 @@ from tianshou.utils import TensorboardLogger
 from tianshou.utils.net.common import Net
 from tianshou.utils.net.discrete import Actor, Critic
 from torch.utils.tensorboard import SummaryWriter
+
+from marl_comm.data import MACollector, MAReplayBuffer
+from marl_comm.env import MAEnvWrapper, get_MA_VectorEnv
+from marl_comm.ma_policy import MAPPOPolicy, PPOPolicy
 
 
 def get_parser() -> argparse.ArgumentParser:

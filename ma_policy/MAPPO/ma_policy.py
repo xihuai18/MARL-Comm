@@ -1,11 +1,12 @@
 from typing import Any, List
 
 import numpy as np
-from marl_comm.data import MAReplayBuffer
-from marl_comm.ma_policy import MAPolicyManager
 from tianshou.data import Batch
 from tianshou.env import PettingZooEnv
 from tianshou.policy import PPOPolicy
+
+from marl_comm.data import MAReplayBuffer
+from marl_comm.ma_policy import MAPolicyManager
 
 
 class MAPPOPolicy(MAPolicyManager):
@@ -43,6 +44,6 @@ class MAPPOPolicy(MAPolicyManager):
                 batch[agent].critic_obs_next = batch[agent].obs_next.obs
             batch[agent].obs = batch[agent].obs.obs
             batch[agent].obs_next = batch[agent].obs_next.obs
-        
+
         results = super().process_fn(batch, buffer, indice)
         return results
