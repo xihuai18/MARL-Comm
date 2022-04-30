@@ -1,7 +1,7 @@
 from typing import Any, Dict, List, Optional, Tuple, Union
 
-import torch.nn as nn
 import numpy as np
+import torch.nn as nn
 from tianshou.data import Batch
 from tianshou.env.pettingzoo_env import PettingZooEnv
 from tianshou.policy import BasePolicy
@@ -133,6 +133,7 @@ class MAPolicyManager(BasePolicy):
         for agent_i, (agent, policy) in enumerate(self.policies.items()):
             results[agent] = policy.process_fn(
                 batch[agent], buffer.get_agent_buffer(agent_i), indice)
+                
         return Batch(results)
 
     def exploration_noise(self, act: Union[np.ndarray, Batch],
@@ -185,11 +186,11 @@ class MAPolicyManager(BasePolicy):
                     (False, np.array([-1]), Batch(), Batch(), Batch()))
                 continue
             tmp_batch = batch[agent_index]
-            if not hasattr(tmp_batch.obs, "mask"):
-                if hasattr(tmp_batch.obs, "obs"):
-                    tmp_batch.obs = tmp_batch.obs.obs
-                if hasattr(tmp_batch.obs_next, "obs"):
-                    tmp_batch.obs_next = tmp_batch.obs_next.obs
+            if hasattr(tmp_batch.obs, "obs"):
+                tmp_batch.obs = tmp_batch.obs.obs
+            if hasattr(tmp_batch.obs_next, "obs"):
+                tmp_batch.obs_next = tmp_batch.obs_next.obs
+            # print(tmp_batch.obs)
             out = policy(
                 batch=tmp_batch,
                 state=None if state is None else state[agent_id],
@@ -211,7 +212,11 @@ class MAPolicyManager(BasePolicy):
             if has_data:
                 holder.act[agent_index] = act
             state_dict[agent_id] = state
-            out_dict[agent_id] = out
+            _out = {}
+            for k, v in out.items():
+                if hasattr(v, "__getitem__"):
+                    _out[k] = v
+            out_dict[agent_id] = _out
         holder[
             "policy"] = out_dict  # other infos could be added to holder["policy"]
         if not any([b.is_empty() for b in state_dict.values()]):

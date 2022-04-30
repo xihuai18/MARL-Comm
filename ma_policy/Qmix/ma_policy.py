@@ -2,14 +2,14 @@ import copy
 from typing import Any, Dict, List, Optional, Type, Union
 
 import numpy as np
-from tianshou.data import ReplayBuffer, to_torch_as
 import torch
 import torch.nn as nn
-from marl_comm.data import MAReplayBuffer
-from marl_comm.ma_policy import MAPolicyManager
-from tianshou.data import Batch
+from tianshou.data import Batch, ReplayBuffer, to_torch_as
 from tianshou.env import PettingZooEnv
 from tianshou.policy import DQNPolicy
+
+from marl_comm.data import MAReplayBuffer
+from marl_comm.ma_policy import MAPolicyManager
 
 
 class QMIXPolicy(MAPolicyManager):

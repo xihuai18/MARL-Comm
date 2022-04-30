@@ -1,5 +1,5 @@
-from pprint import pprint
 import time
+from pprint import pprint
 from typing import Any, Callable, Dict, List, Optional, Union
 
 import gym
@@ -224,7 +224,6 @@ class MACollector(Collector):
                 if np.any(done):
                     env_ind_local = np.where(done)[0]
                     env_ind_global = ready_env_ids[env_ind_local]
-
                     ptr, ep_rew, ep_len, ep_idx = self.buffer.add(
                         last_data[env_ind_local], env_ind_global)
                     left_env_ids = [
@@ -273,6 +272,7 @@ class MACollector(Collector):
 
             # collect statistics
             step_count += self.maenv_num
+            # print("step_count:", step_count)
 
             self.data = whole_data
             if (n_step and step_count >= n_step) or (
